@@ -26,7 +26,8 @@
     <div id="container">
         <h1 class="model-heading" id="recognize">Click the start button to start recognizing...</h1>
         <div class="camera-container">
-            <button id="flipcamera" onclick="flipCamera()">Flip Camera</button>
+            <label for="cameraSelect">Select Camera:</label>
+            <select id="cameraSelect"></select>
             <div id="webcam-container"></div>
             <div id="label-container"></div>
         </div>
@@ -53,8 +54,12 @@
                 model = await tmImage.load(modelURL, metadataURL);
                 maxPredictions = model.getTotalClasses();
 
-                const flip = true;
-                webcam = new tmImage.Webcam(200, 200, flip);
+                const cameraSelect = document.getElementById("cameraSelect");
+                await setupCameras(cameraSelect);
+
+                const selectedCamera = cameraSelect.value;
+                const flip = false; // Set to true if flipping is needed
+                webcam = new tmImage.Webcam(200, 200, flip, selectedCamera);
                 await webcam.setup();
                 await webcam.play();
                 window.requestAnimationFrame(loop);
@@ -64,6 +69,18 @@
                 for (let i = 0; i < maxPredictions; i++) {
                     labelContainer.appendChild(document.createElement("div"));
                 }
+            }
+
+            async function setupCameras(cameraSelect) {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                devices.forEach((device) => {
+                    if (device.kind === "videoinput") {
+                        const option = document.createElement("option");
+                        option.value = device.deviceId;
+                        option.text = device.label || `Camera ${cameraSelect.length + 1}`;
+                        cameraSelect.appendChild(option);
+                    }
+                });
             }
 
             async function loop() {
@@ -83,11 +100,6 @@
 
             function reloadModel() {
                 location.reload();
-            }
-
-            function flipCamera() {
-                webcam.flip();
-                webcam.play();
             }
         </script>
     </div>
