@@ -34,109 +34,70 @@
         <button id="getStartedBtn" onclick="callToInitLimit()">Start</button>
         <button id="stopBtn" onclick="reloadModel()">Stop</button>
         <script>
-            const URL = "./my_model/";
-            let model, webcam, labelContainer, maxPredictions;
+            let model, video, labelContainer, maxPredictions;
             let count = 0;
-
+        
             async function callToInitLimit() {
-                if (count === 0) {
-                    await init();
-                    count += 1;
-                } else {
+
                     alert("Model already running");
+            }
+        
+            async function init() {
+                const modelURL = "./my_model/model.json";
+                const metadataURL = "./my_model/metadata.json";
+        
+                model = await tmImage.load(modelURL, metadataURL);
+                maxPredictions = model.getTotalClasses();
+        
+                video = document.createElement("video");
+                video.width = 200;
+                video.height = 200;
+        
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: true
+                    });
+        
+                    video.srcObject = stream;
+                    document.getElementById("webcam-container").appendChild(video);
+        
+                    // Initialize label container
+                    labelContainer = document.getElementById("label-container");
+                    for (let i = 0; i < maxPredictions; i++) {
+                        labelContainer.appendChild(document.createElement("div"));
+                    }
+        
+                    video.play();
+        
+                    window.requestAnimationFrame(loop);
+                } catch (error) {
+                    console.error("Error initializing webcam:", error);
                 }
             }
-
-            async function init() {
-    const modelURL = URL + "model.json";
-    const metadataURL = URL + "metadata.json";
-
-    model = await tmImage.load(modelURL, metadataURL);
-    maxPredictions = model.getTotalClasses();
-
-    const cameraSelect = document.getElementById("cameraSelect");
-    await setupCameras(cameraSelect);
-
-    const flip = false; // Set to true if flipping is needed
-    webcam = new tmImage.Webcam(200, 200, flip);
-    await webcam.setup();
-
-    // Append the video element to the container
-    document.getElementById("webcam-container").appendChild(webcam.canvas);
-    
-    // Initialize label container
-    labelContainer = document.getElementById("label-container");
-    for (let i = 0; i < maxPredictions; i++) {
-        labelContainer.appendChild(document.createElement("div"));
-    }
-
-    // Call update to make sure the correct camera is displayed
-    webcam.update();
-
-    // Add event listener to change camera when selection changes
-    cameraSelect.addEventListener('change', async () => {
-        const selectedCamera = cameraSelect.value;
-        const videoTracks = webcam.stream.getVideoTracks();
-
-        // Stop the current tracks
-        videoTracks.forEach(track => track.stop());
-
-        // Get the new camera stream
-        const constraints = {
-            video: {
-                deviceId: { exact: selectedCamera }
-            }
-        };
-
-        try {
-            const newStream = await navigator.mediaDevices.getUserMedia(constraints);
-            webcam.stream = newStream;
-            await webcam.setup();
-            webcam.play();
-        } catch (error) {
-            console.error("Error switching camera:", error);
-        }
-    });
-
-    await webcam.play();
-    window.requestAnimationFrame(loop);
-}
-
-
-
-
-
-            async function setupCameras(cameraSelect) {
-                const devices = await navigator.mediaDevices.enumerateDevices();
-                devices.forEach((device) => {
-                    if (device.kind === "videoinput") {
-                        const option = document.createElement("option");
-                        option.value = device.deviceId;
-                        option.text = device.label || `Camera ${cameraSelect.length + 1}`;
-                        cameraSelect.appendChild(option);
-                    }
-                });
-            }
-
+        
             async function loop() {
-                webcam.update();
                 await predict();
                 window.requestAnimationFrame(loop);
             }
-
+        
             async function predict() {
-                const prediction = await model.predict(webcam.canvas);
+                const prediction = await model.predict(video);
                 for (let i = 0; i < maxPredictions; i++) {
                     const classPrediction =
                         prediction[i].className + ": " + prediction[i].probability.toFixed(2);
                     labelContainer.childNodes[i].innerHTML = classPrediction;
                 }
             }
-
+        
             function reloadModel() {
                 location.reload();
             }
+        
+            // Automatically initialize on page load
+            init();
         </script>
+        
+        
     </div>
 </body>
 
