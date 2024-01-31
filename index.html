@@ -48,28 +48,62 @@
             }
 
             async function init() {
-                const modelURL = URL + "model.json";
-                const metadataURL = URL + "metadata.json";
+    const modelURL = URL + "model.json";
+    const metadataURL = URL + "metadata.json";
 
-                model = await tmImage.load(modelURL, metadataURL);
-                maxPredictions = model.getTotalClasses();
+    model = await tmImage.load(modelURL, metadataURL);
+    maxPredictions = model.getTotalClasses();
 
-                const cameraSelect = document.getElementById("cameraSelect");
-                await setupCameras(cameraSelect);
+    const cameraSelect = document.getElementById("cameraSelect");
+    await setupCameras(cameraSelect);
 
-                const selectedCamera = cameraSelect.value;
-                const flip = false; // Set to true if flipping is needed
-                webcam = new tmImage.Webcam(200, 200, flip, selectedCamera);
-                await webcam.setup();
-                await webcam.play();
-                window.requestAnimationFrame(loop);
+    const flip = false; // Set to true if flipping is needed
+    webcam = new tmImage.Webcam(200, 200, flip);
+    await webcam.setup();
 
-                document.getElementById("webcam-container").appendChild(webcam.canvas);
-                labelContainer = document.getElementById("label-container");
-                for (let i = 0; i < maxPredictions; i++) {
-                    labelContainer.appendChild(document.createElement("div"));
-                }
+    // Append the video element to the container
+    document.getElementById("webcam-container").appendChild(webcam.canvas);
+    
+    // Initialize label container
+    labelContainer = document.getElementById("label-container");
+    for (let i = 0; i < maxPredictions; i++) {
+        labelContainer.appendChild(document.createElement("div"));
+    }
+
+    // Call update to make sure the correct camera is displayed
+    webcam.update();
+
+    // Add event listener to change camera when selection changes
+    cameraSelect.addEventListener('change', async () => {
+        const selectedCamera = cameraSelect.value;
+        const videoTracks = webcam.stream.getVideoTracks();
+        
+        // Stop the current tracks
+        videoTracks.forEach(track => track.stop());
+        
+        // Replace the tracks with the new camera
+        const newConstraints = {
+            video: {
+                deviceId: { exact: selectedCamera }
             }
+        };
+
+        const newStream = await navigator.mediaDevices.getUserMedia(newConstraints);
+        webcam.stream = newStream;
+
+        // Call setup to update the video element with the new stream
+        await webcam.setup();
+
+        // Update the labels
+        webcam.update();
+    });
+
+    await webcam.play();
+    window.requestAnimationFrame(loop);
+}
+
+
+
 
             async function setupCameras(cameraSelect) {
                 const devices = await navigator.mediaDevices.enumerateDevices();
