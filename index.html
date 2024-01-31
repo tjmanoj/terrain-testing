@@ -33,13 +33,19 @@
         </div>
         <button id="getStartedBtn" onclick="callToInitLimit()">Start</button>
         <button id="stopBtn" onclick="reloadModel()">Stop</button>
+        <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+        <script src="https://unpkg.com/getusermedia@3.0.1"></script>
         <script>
             let model, video, labelContainer, maxPredictions;
             let count = 0;
         
             async function callToInitLimit() {
-
+                if (count === 0) {
+                    await init();
+                    count += 1;
+                } else {
                     alert("Model already running");
+                }
             }
         
             async function init() {
@@ -54,24 +60,53 @@
                 video.height = 200;
         
                 try {
-                    const stream = await navigator.mediaDevices.getUserMedia({
-                        video: true
-                    });
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    const videoDevices = devices.filter(device => device.kind === "videoinput");
         
-                    video.srcObject = stream;
-                    document.getElementById("webcam-container").appendChild(video);
+                    if (videoDevices.length > 0) {
+                        // Prompt user to choose a camera
+                        const selectedCamera = promptCameraSelection(videoDevices);
+                        
+                        const constraints = {
+                            video: {
+                                deviceId: selectedCamera
+                            }
+                        };
         
-                    // Initialize label container
-                    labelContainer = document.getElementById("label-container");
-                    for (let i = 0; i < maxPredictions; i++) {
-                        labelContainer.appendChild(document.createElement("div"));
+                        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                        video.srcObject = stream;
+                        document.getElementById("webcam-container").appendChild(video);
+        
+                        // Initialize label container
+                        labelContainer = document.getElementById("label-container");
+                        for (let i = 0; i < maxPredictions; i++) {
+                            labelContainer.appendChild(document.createElement("div"));
+                        }
+        
+                        video.play();
+        
+                        window.requestAnimationFrame(loop);
+                    } else {
+                        console.error("No video devices found");
                     }
-        
-                    video.play();
-        
-                    window.requestAnimationFrame(loop);
                 } catch (error) {
                     console.error("Error initializing webcam:", error);
+                }
+            }
+        
+            function promptCameraSelection(videoDevices) {
+                const cameraOptions = videoDevices.map(device => ({
+                    value: device.deviceId,
+                    label: device.label || `Camera ${videoDevices.indexOf(device) + 1}`
+                }));
+        
+                const selection = prompt("Select a camera:\n" + cameraOptions.map((option, index) => `${index + 1}. ${option.label}`).join("\n"));
+        
+                if (selection && !isNaN(selection) && parseInt(selection) <= videoDevices.length) {
+                    return cameraOptions[parseInt(selection) - 1].value;
+                } else {
+                    alert("Invalid selection. Using the first camera.");
+                    return videoDevices[0].deviceId;
                 }
             }
         
@@ -96,6 +131,9 @@
             // Automatically initialize on page load
             init();
         </script>
+        
+        
+        
         
         
     </div>
