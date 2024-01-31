@@ -77,30 +77,31 @@
     cameraSelect.addEventListener('change', async () => {
         const selectedCamera = cameraSelect.value;
         const videoTracks = webcam.stream.getVideoTracks();
-        
+
         // Stop the current tracks
         videoTracks.forEach(track => track.stop());
-        
-        // Replace the tracks with the new camera
-        const newConstraints = {
+
+        // Get the new camera stream
+        const constraints = {
             video: {
                 deviceId: { exact: selectedCamera }
             }
         };
 
-        const newStream = await navigator.mediaDevices.getUserMedia(newConstraints);
-        webcam.stream = newStream;
-
-        // Call setup to update the video element with the new stream
-        await webcam.setup();
-
-        // Update the labels
-        webcam.update();
+        try {
+            const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+            webcam.stream = newStream;
+            await webcam.setup();
+            webcam.play();
+        } catch (error) {
+            console.error("Error switching camera:", error);
+        }
     });
 
     await webcam.play();
     window.requestAnimationFrame(loop);
 }
+
 
 
 
